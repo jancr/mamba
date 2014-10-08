@@ -1,0 +1,159 @@
+================================================================================
+                                    TODO:
+                        ---------------------------
+ - Ditch our Core.Log module and replace it with the logging system module.
+   - Port some of the current log format into a LogFormatHandler class. 
+   - Implement an access log and an info log.
+================================================================================
+
+2011.07.22:
+ - Ported GetStatus from Reflect project code into the core code.
+ - Made the Postgres driver module (pg) optional such that on systems where that
+   module is not install the server will still run but with no support for the
+   user-settings solution.
+ - Using urlparse system module instead of self-hacked regex to extract http
+   query and path from client's http request.
+ - Instituted new way of determining which request-handler class to instanciate
+   when getting an incoming request. Instead of extracting an action that is the
+   last part of a restricted formatted path e.g. /(REST|SOAP)/<Action> we now
+   simply say request = os.path.basename(urlpart.urlsplit(url).path)
+
+2011.07.23:
+ - Request.recv() now returns a return code instead of throwing exceptions to
+   allow unexpected exceptions to show up more clearly.
+ - Removed all references to REST and SOAP protocol.
+ - Changed RestDecoder to just take a request class object and from that
+   retrieve the charset and data in the request and from that extract the REST
+   paramteres.
+
+2011.07.25:
+ - Fixed double shutdown of server, always calls posix._exit() to quit hard.
+ - Core.Tools.match_http_request() now takes an HTTPRequest object and sets
+   members diretly from HTTP data.
+ - Created HTTPHeaders class, for use in class: HTTPRequest and HTTPResponse.
+
+2011.07.28:
+ - Rewrote HTTPResponse to handle content-type better and especially to support images.
+ - Implemented a FavoriteIkon request.
+  
+2011.08.01:
+ - Eliminated get_site_name() from download/internet code using urlparse instead.
+ - Created Core.util.py, ported Download, GetStatus Stat.py stuff to that file.
+
+2011.08.02:
+ - Extending and moving stuff from Core.Tools to Core.util.
+ - Protected Log module from raising an exception if stdout or err are closed.
+ - Moved stuff from Net.py into Http.py (network and request classes).
+
+2011.08.03:
+ - Internet class is now using HTTPHeader class.
+ - Finished the Curl-Internet class preparing it for Proxy-mode.
+ - Completed first round of redesigning the Internet() interface.
+
+2011.08.04:
+ - Cut link to existing SVN module (Core).
+ - Created Application class
+ - Renamed project from Core to firework and simplified the package files by
+   renaming and merging files. Now we have:
+    1) __init__.py
+	2) util.py
+	3) setup.py
+	4) http.py
+	5) app.py
+	6) task.py
+    7) worker.py
+ - Cleaned up handling of socket receive errors.
+ - Reduced irrelevant starup and shutdown messages.
+
+2011.08.07:
+ - Changed setup of queues. Allowed specifying number of threads in definition
+   of queues which creates a default thread pool connected to that queue with
+   that many threads. One can still define additional thread pools.
+ - Eliminated file worker.py. Moved code into app.py and renamed Thread to
+   WorkerThread.
+ - Eliminated __init__.py code (now it is empty). Using firework.setup.Config()
+   to establish the single reference to the single setup object instead of using
+   the firework.init() function that just call firework.setup.Config().
+   
+2011.08.08:
+ - Fixed set-cookie (yet again) now providing an expiration date 10 years out.
+
+2011.08.09:
+ - Fixing Reflect project to fit the new queue platform.
+
+2011.08.10:
+ - Simplified insertion of base-ref HTML tag in header of HTML documents by
+   tagger.py using the urlparse module instead of home-cooked regex.
+ - Fixed design-bug in download. Problem; We download with the following Accept-
+   Charset request header copied from FireFox:
+   
+       Accept-Charset: iso-8859-1,utf-8;q=0.7,*;q=0.3
+   
+   Which makes sense since this is what the user probably would send to the web
+   server anyway and it is the most used one creating a de-facto standard. This
+   preference for iso-8859-1 means that we often get latin-1 HTML back and not
+   utf-8 which we assumed to much before. Latin-1 is the better assumption.
+   Also, often we do not get the Content-Type information from the response
+   headers. Many webservers return pages that contain that information in a meta
+   tag like:
+   
+      <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1" />
+   
+   Meta tags are inside the HTML <head> tag. We now use this such that if we
+   cannot find the charset in the response headers we revert to finding that
+   information in the document by looking for the above meta tag. That may give
+   us the charset finally. However, if that also ends up empty handed we revert
+   to assume the code-page was Latin-1 (iso-8859-1). Internet().download() now
+   returns the charset that it thinks the page is in and we adjust the charset
+   accordingly in the HTTP request object that is to be send back to the client.
+   The HTTPResponse class turns the body into a string of bytes using this
+   charset.
+   
+2011.08.11:
+ - Implemented file serving capability. Still missing MIME-type mapping between
+   file extension to "Content-Type".
+ - Implemented rather complete map between 642 uniqueue file extensions to MIME
+   type. This MIME type is used in loading the "Content-Type" in the response
+   object.
+   
+2011.08.16:
+ - Renamed package from firework to mamba like the fast moving, poisioness snake.
+ - Restructured the Reflect API queue server implementation and made completely
+   new modules in SVN. This was a big move.
+
+2011.08.17:
+ - Renamed mamba.setup.Config() to mamba.setup.config() with a small letter to
+   avoid mixing capital and small letters. Fixed Reflect API also.
+ - Fixed RunTests command to use the new folder organization.
+ 
+2011.08.20:
+ - Removed use of kind of flawed Python module 'mimetypes' and code one myself.
+   Made a static class that uses the UNIX file utility to retrive the MIME type.
+ - Added 'encoding' to mamba.http.HTTPResponse constructor. This goes into the
+   response headers as the 'charset=...' part of the 'Content-Type' header.
+   In case encoding is not set we use the request.http.charset.
+   **** Is this correct? ****
+ - Implemented 'insert_base' in BaseInternet.download() which will insert a
+   <base href="..." /> into the <head>...</head>. This makes it possible to
+   serve browser clients via the Download request much more cleanly since the
+   subsequent traffic/ajax calls goes to the destination server and not our
+   Mamba server thus making the downloaded page content work properly.
+   
+2011.08.23:
+ - Rewrote way that custom setup classes (derived from mamba.setup.Configuration)
+   is loaded by the Application class. Now we look through all .py files in the
+   plugin directory and load types from the modules. We check if any type is
+   derived from mamba.setup.Configuration and if so, load this type and treat
+   this as the setup object setting it to read the .ini file etc.
+
+2011.08.28:
+ - Modulized HTTPServer.create_task() by implementing url-rewrite, proxy, get-file
+   and create-request methods. It also now returns just one object which is either
+   a mamba.task.Request or a mamba.http.HTTPResponse. If create_task() returns a 
+   response it signifies an error in the http request or that we cannot map it to
+   an action and that response is send back immediately.
+ - mamba.app.Application now takes a HTTPServer in the constructor thus allowing
+   developers to make their own server possibly derived from HTTPServer and plug
+   it into the application and run it. In that way people can overload create_task()
+   and make it do smarter things than what we offer per default. The sub-create-task
+   methods are then nicely available for such a case.   
